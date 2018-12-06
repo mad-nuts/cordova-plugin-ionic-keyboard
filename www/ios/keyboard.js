@@ -80,6 +80,9 @@ Keyboard.hide = function () {
     exec(null, null, "Keyboard", "hide", []);
 };
 
+// "ionic-plugin-keyboard" alias
+Keyboard.close = Keyboard.hide;
+
 Keyboard.show = function () {
     console.warn('Showing keyboard not supported in iOS due to platform limitations.');
     console.warn('Instead, use input.focus(), and ensure that you have the following setting in your config.xml: \n');
@@ -92,7 +95,7 @@ Keyboard.disableScroll = function (disable) {
 
 Keyboard.setResizeMode = function (mode) {
     exec(null, null, "Keyboard", "setResizeMode", [mode]);
-}
+};
 
 Keyboard.isVisible = false;
 

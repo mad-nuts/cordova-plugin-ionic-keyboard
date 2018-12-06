@@ -46,6 +46,9 @@ Keyboard.hide = function () {
     exec(null, null, "Keyboard", "hide", []);
 };
 
+// "ionic-plugin-keyboard" alias
+Keyboard.close = Keyboard.hide;
+
 Keyboard.show = function () {
     exec(null, null, "Keyboard", "show", []);
 };
@@ -56,7 +59,7 @@ Keyboard.disableScroll = function (disable) {
 
 Keyboard.setResizeMode = function (mode) {
     console.warn("Keyboard.setResizeMode() not supported in Android");
-}
+};
 
 channel.onCordovaReady.subscribe(function () {
     exec(success, null, 'Keyboard', 'init', []);
