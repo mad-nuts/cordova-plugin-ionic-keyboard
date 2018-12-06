@@ -40,6 +40,10 @@ typedef enum : NSUInteger {
 @property (nonatomic, readwrite) BOOL isWK;
 @property (nonatomic, readwrite) int paddingBottom;
 
+// iOS 12 UIWebView bug fix - prevent auto-scroll to focussed element
+@property (nonatomic, readwrite) id oldScrollDelegate;
+@property (nonatomic, readwrite) CGPoint oldOffset;
+
 @end
 
 @implementation CDVIonicKeyboard
@@ -95,6 +99,11 @@ typedef enum : NSUInteger {
         [nc removeObserver:self.webView name:UIKeyboardWillChangeFrameNotification object:nil];
         [nc removeObserver:self.webView name:UIKeyboardDidChangeFrameNotification object:nil];
     }
+    
+    // iOS 12 UIWebView bug fix - apply WKWebView functionality to UIWebView
+    if(@available(iOS 12, *)) {
+        isWK = self.isWK = YES;
+    }
 }
 
 -(void)statusBarDidChangeFrame:(NSNotification*)notification
@@ -109,6 +118,16 @@ typedef enum : NSUInteger {
 {
     UIScrollView *scrollView = [self.webView scrollView];
     [scrollView setContentInset:UIEdgeInsetsZero];
+    
+    // iOS 12 UIWebView bug fix - prevent scrollView from scrolling out of the screen
+    if(@available(iOS 12, *)) {
+        if(self.keyboardResizes == ResizeNative) {
+            self.webView.scrollView.scrollEnabled = self.paddingBottom <= 0;
+            if(self.paddingBottom > 0) {
+                [[self.webView scrollView] setContentOffset:CGPointZero];
+            }
+        }
+    }
 }
 
 - (void)onKeyboardWillHide:(NSNotification *)sender
@@ -122,6 +141,13 @@ typedef enum : NSUInteger {
 
 - (void)onKeyboardWillShow:(NSNotification *)note
 {
+    // iOS 12 UIWebView bug fix - prevent auto-scroll to focussed element
+    if(@available(iOS 12, *)) {
+        self.oldScrollDelegate = self.webView.scrollView.delegate;
+        self.oldOffset = self.webView.scrollView.contentOffset;
+        self.webView.scrollView.delegate = self;
+    }
+    
     CGRect rect = [[note.userInfo valueForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
     double height = rect.size.height;
 
@@ -137,6 +163,11 @@ typedef enum : NSUInteger {
 
 - (void)onKeyboardDidShow:(NSNotification *)note
 {
+    // iOS 12 UIWebView bug fix - prevent auto-scroll to focussed element
+    if(@available(iOS 12, *)) {
+        self.webView.scrollView.delegate = self.oldScrollDelegate;
+    }
+    
     CGRect rect = [[note.userInfo valueForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
     double height = rect.size.height;
 
@@ -146,6 +177,13 @@ typedef enum : NSUInteger {
 
     NSString *js = [NSString stringWithFormat:@"Keyboard.fireOnShow(%d);", (int)height];
     [self.commandDelegate evalJs:js];
+}
+
+// iOS 12 UIWebView bug fix - prevent auto-scroll to focussed element
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    if(@available(iOS 12, *)) {
+        self.webView.scrollView.contentOffset = self.oldOffset;
+    }
 }
 
 - (void)onKeyboardDidHide:(NSNotification *)sender
