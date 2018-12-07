@@ -40,6 +40,9 @@ typedef enum : NSUInteger {
 @property (nonatomic, readwrite) BOOL isWK;
 @property (nonatomic, readwrite) int paddingBottom;
 
+// iOS 12 UIWebView bug fix - is UIWebView in combination with iOS 12
+@property (nonatomic, readwrite) BOOL isUI12;
+
 // iOS 12 UIWebView bug fix - prevent auto-scroll to focussed element
 @property (nonatomic, readwrite) id oldScrollDelegate;
 @property (nonatomic, readwrite) CGPoint oldOffset;
@@ -57,6 +60,17 @@ typedef enum : NSUInteger {
 
 - (void)pluginInitialize
 {
+    // iOS 12 UIWebView bug fix - is UIWebView in combination with iOS 12
+    self.isUI12 = NO;
+    if([self.webView isKindOfClass:NSClassFromString(@"UIWebView")]) {
+        // iOS 12 UIWebView bug fix - allow focus by js
+        UIWebView *uiwView = (UIWebView *)self.webView;
+        uiwView.keyboardDisplayRequiresUserAction = NO;
+        if(@available(iOS 12, *)) {
+            self.isUI12 = YES;
+        }
+    }
+    
     NSDictionary *settings = self.commandDelegate.settings;
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(statusBarDidChangeFrame:) name: UIApplicationDidChangeStatusBarFrameNotification object:nil];
@@ -99,11 +113,6 @@ typedef enum : NSUInteger {
         [nc removeObserver:self.webView name:UIKeyboardWillChangeFrameNotification object:nil];
         [nc removeObserver:self.webView name:UIKeyboardDidChangeFrameNotification object:nil];
     }
-    
-    // iOS 12 UIWebView bug fix - apply WKWebView functionality to UIWebView
-    if(@available(iOS 12, *)) {
-        isWK = self.isWK = YES;
-    }
 }
 
 -(void)statusBarDidChangeFrame:(NSNotification*)notification
@@ -120,7 +129,7 @@ typedef enum : NSUInteger {
     [scrollView setContentInset:UIEdgeInsetsZero];
     
     // iOS 12 UIWebView bug fix - prevent scrollView from scrolling out of the screen
-    if(@available(iOS 12, *)) {
+    if(self.isUI12) {
         if(self.keyboardResizes == ResizeNative) {
             self.webView.scrollView.scrollEnabled = self.paddingBottom <= 0;
             if(self.paddingBottom > 0) {
@@ -132,7 +141,8 @@ typedef enum : NSUInteger {
 
 - (void)onKeyboardWillHide:(NSNotification *)sender
 {
-    if (self.isWK) {
+    // iOS 12 UIWebView bug fix - is UIWebView in combination with iOS 12
+    if (self.isWK || self.isUI12) {
         [self setKeyboardHeight:0 delay:0.01];
         [self resetScrollView];
     }
@@ -142,7 +152,7 @@ typedef enum : NSUInteger {
 - (void)onKeyboardWillShow:(NSNotification *)note
 {
     // iOS 12 UIWebView bug fix - prevent auto-scroll to focussed element
-    if(@available(iOS 12, *)) {
+    if(self.isUI12) {
         self.oldScrollDelegate = self.webView.scrollView.delegate;
         self.oldOffset = self.webView.scrollView.contentOffset;
         self.webView.scrollView.delegate = self;
@@ -151,7 +161,8 @@ typedef enum : NSUInteger {
     CGRect rect = [[note.userInfo valueForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
     double height = rect.size.height;
 
-    if (self.isWK) {
+    // iOS 12 UIWebView bug fix - is UIWebView in combination with iOS 12
+    if (self.isWK || self.isUI12) {
         double duration = [[note.userInfo valueForKey:UIKeyboardAnimationDurationUserInfoKey] doubleValue];
         [self setKeyboardHeight:height delay:duration/2.0];
         [self resetScrollView];
@@ -164,14 +175,15 @@ typedef enum : NSUInteger {
 - (void)onKeyboardDidShow:(NSNotification *)note
 {
     // iOS 12 UIWebView bug fix - prevent auto-scroll to focussed element
-    if(@available(iOS 12, *)) {
+    if(self.isUI12) {
         self.webView.scrollView.delegate = self.oldScrollDelegate;
     }
     
     CGRect rect = [[note.userInfo valueForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
     double height = rect.size.height;
 
-    if (self.isWK) {
+    // iOS 12 UIWebView bug fix - is UIWebView in combination with iOS 12
+    if (self.isWK || self.isUI12) {
         [self resetScrollView];
     }
 
@@ -181,7 +193,7 @@ typedef enum : NSUInteger {
 
 // iOS 12 UIWebView bug fix - prevent auto-scroll to focussed element
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-    if(@available(iOS 12, *)) {
+    if(self.isUI12) {
         self.webView.scrollView.contentOffset = self.oldOffset;
     }
 }
